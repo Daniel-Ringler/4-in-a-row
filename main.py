@@ -13,11 +13,14 @@ class PgView:
         pygame.init() 
         pygame.font.init()
         pygame.display.set_caption("4 in a Row")
+        self.white = (255,255,255)
         self.width = width
         self.height = height
         self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF)
-        self.background = pygame.Surface(self.screen.get_size()).convert()
-        self.background.fill((255,255,255))
+        self.game_surface = pygame.Surface(self.screen.get_size()).convert()
+        self.game_surface.fill((self.white))
+        self.menu_surface = pygame.Surface(self.screen.get_size()).convert()
+        self.menu_surface.fill(self.white)
     
     
     def draw_gameboard(self):
@@ -27,7 +30,7 @@ class PgView:
         # generate the typical 4 in a row form 
         for _ in range (0,42):
             mysegment = GameBoard_Segment((x,y))
-            mysegment.blit(self.background)
+            mysegment.blit(self.game_surface)
             
             x += 100
             
@@ -42,103 +45,123 @@ class PgView:
         else:
             token = Tokens((255,255,0), (location))
             
-        token.blit(self.background)
+        token.blit(self.game_surface)
     
     def draw_whitespace(self):
         surface = pygame.Surface((800,150))
         surface.fill((255,255,255))
         surface = surface.convert()
-        self.background.blit(surface, (0,0))     
+        self.game_surface.blit(surface, (0,0))     
         
     def draw_font(self, text):
         font = pygame.font.SysFont('Arial', 30)
         textsurface = font.render(text, False, (0, 0, 0))
-        self.background.blit(textsurface, (0,0))
+        self.game_surface.blit(textsurface, (0,0))
     
     def run(self):
         
-        game = True
+        running = True
         win = False
         counter = 0
         token_array = [] # array of lists containing X-Coordinate, Y-Coordinate and the Token (0 -> Red or 1 -> Yellow)
+        current_surface = "menu" # decides if the menu or the game is displayed
         
         x = 350
         y = 0
         
-        while game:
-            while counter < 42:
+        while running:
+            counter = 0
+            token_array = []
+            win = False
+            
+            if current_surface == "menu":
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        game = False
-                        counter = 43
+                        running = False
                     elif event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_RIGHT:
-                            if x < 600:
-                                x += 100
-                        if event.key == pygame.K_LEFT:
-                            if x > 100:
-                                x -= 100
-                        if event.key == pygame.K_DOWN:
-                            y += 650
-                            a = Game_Logic(x, y, counter)
-                            token_check = a.compare_token_to_array(token_array)
-                            for _ in range(6):
-                                if token_check == True:
-                                    y -= 100
-                                    a = Game_Logic(x, y, counter)
-                                    token_check = a.compare_token_to_array(token_array)    
-                            if y > 100:
-                                token_array = a.append_to_token_array(token_array)
-                                win = a.check_win(token_array)
-                                    
-                                counter += 1
-                                x = 350
-                            y = 0
-                        if event.key == pygame.K_ESCAPE:                            
-                            game = False
-                            counter = 43
-                        
+                        if event.key == pygame.K_ESCAPE:
+                            running = False
+                        if event.key == pygame.K_SPACE:
+                            current_surface = "game"
+                
                 self.draw_whitespace()
-                self.draw_token(counter, (x,y))
-                self.draw_gameboard()
-                
-                z = 0
-                
-                for _ in token_array:
-                    position = _
-                    if len(position) == 3:
-                        token = position[2]
-                        position.pop()
-                    token = z % 2
-                    self.draw_token(token, position)
-                    position.append(token)
-                    z += 1
-                
-                self.screen.blit(self.background, (0,0))
+                self.screen.blit(self.menu_surface, (0,0))
                 pygame.display.update()
                 
-                choice = False
-                                
-                if win != False:
-                    self.draw_font("Test Font")
-                    print(str(win) + " has won!")
-                    print("Enter 1 to start a new round.")
-                    print("Enter 2 to quit playing")
-                    choice = int(input()) 
-                
-                if choice != False:
-                    if choice > 2 and choice < 1:
-                        print("Wrong choice.")
-                    if choice == 1:
-                        counter = 0
-                        token_array = []
-                        win = False
-                    if choice == 2:
-                        counter = 43
-                        game = False
+            if current_surface == "game":
+                while counter < 42:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            running = False
+                            counter = 43
+                        elif event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_BACKSPACE:
+                                current_surface = "menu"
+                                counter = 43
+                            if event.key == pygame.K_RIGHT:
+                                if x < 600:
+                                    x += 100
+                            if event.key == pygame.K_LEFT:
+                                if x > 100:
+                                    x -= 100
+                            if event.key == pygame.K_DOWN:
+                                y += 650
+                                a = Game_Logic(x, y, counter)
+                                token_check = a.compare_token_to_array(token_array)
+                                for _ in range(6):
+                                    if token_check == True:
+                                        y -= 100
+                                        a = Game_Logic(x, y, counter)
+                                        token_check = a.compare_token_to_array(token_array)    
+                                if y > 100:
+                                    token_array = a.append_to_token_array(token_array)
+                                    win = a.check_win(token_array)
+                                        
+                                    counter += 1
+                                x = 350
+                                y = 0
+                            if event.key == pygame.K_ESCAPE:                            
+                                running = False
+                                counter = 43
+                            
+                    self.draw_whitespace()
+                    self.draw_token(counter, (x,y))
+                    self.draw_gameboard()
+                    
+                    # draw tokens on the gameboard
+                    for i in token_array:
+                        position = i
+                        if len(position) == 3:
+                            token_color = position[2]
+                            position.pop()
+                        self.draw_token(token_color, position)
+                        position.append(token_color)
+
+                    self.screen.blit(self.game_surface, (0,0))
+                    pygame.display.update()
+                                    
+                    if win != False:
+                        print(str(win) + " has won!")
+                        print("Enter 1 to start a new round.")
+                        print("Enter 2 to quit playing")
+                        choice = int(input()) 
+
+                        while choice > 2 or choice < 1:
+                            print(str(choice) + " is not allowed.")
+                            print("Enter 1 to start a new round.")
+                            print("Enter 2 to quit playing.")
+                            choice = int(input())
+                            
+                        if choice == 1:
+                            counter = 0
+                            token_array = []
+                            win = False
+                        if choice == 2:
+                            counter = 43
+                            running = False
                 
             
-            if game == False:
+            if running == False:
                 print("game stopped")
                 pygame.quit()
                 
@@ -154,8 +177,8 @@ class GameBoard_Segment:
         pygame.draw.circle(self.surface, (255,255,255), (50,50),45)
         self.surface = self.surface.convert()
         
-    def blit(self, background):
-        background.blit(self.surface, (self.position))
+    def blit(self, game_surface):
+        game_surface.blit(self.surface, (self.position))
     
 
 # class that generates the player tokens
@@ -168,8 +191,8 @@ class Tokens:
         self.surface = self.surface.convert_alpha()
         pygame.draw.circle(self.surface, (color), (50,50),45)
     
-    def blit(self, background):
-        background.blit(self.surface, (self.position))
+    def blit(self, game_surface):
+        game_surface.blit(self.surface, (self.position))
         
 class Game_Logic:
     
